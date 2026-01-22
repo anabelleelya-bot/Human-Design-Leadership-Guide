@@ -33,8 +33,7 @@ def process_guide():
     
     Expects JSON:
     {
-        "template_url": "https://drive.google.com/...",  # Optional if template_data provided
-        "template_data": "base64_encoded_docx",  # Or provide URL
+        "template_url": "https://drive.google.com/...",  # Direct download link
         "replacements": {
             "{{name}}": "Client Name",
             "{{type}}": "Projector",
@@ -47,23 +46,17 @@ def process_guide():
     try:
         data = request.json
         
-        # Get template
-        if 'template_data' in data:
-            import base64
-            template_bytes = base64.b64decode(data['template_data'])
-            template_file = tempfile.NamedTemporaryFile(delete=False, suffix='.docx')
-            template_file.write(template_bytes)
-            template_file.close()
-            template_path = template_file.name
-        elif 'template_url' in data:
+        # Get template from URL
+        if 'template_url' in data:
             import requests
             response = requests.get(data['template_url'])
+            response.raise_for_status()
             template_file = tempfile.NamedTemporaryFile(delete=False, suffix='.docx')
             template_file.write(response.content)
             template_file.close()
             template_path = template_file.name
         else:
-            return jsonify({"error": "No template provided"}), 400
+            return jsonify({"error": "No template_url provided"}), 400
         
         # Load document
         doc = Document(template_path)
@@ -73,6 +66,7 @@ def process_guide():
         for paragraph in doc.paragraphs:
             for key, value in replacements.items():
                 if value:
+                    # Properly handle Unicode
                     replace_text_in_paragraph(paragraph, key, str(value))
         
         # Save to temp file
@@ -92,7 +86,8 @@ def process_guide():
         )
         
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        import traceback
+        return jsonify({"error": str(e), "traceback": traceback.format_exc()}), 500
 
 @app.route('/health', methods=['GET'])
 def health():
