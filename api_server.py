@@ -46,8 +46,15 @@ def process_guide():
     try:
         data = request.json
         
-        # Get template from URL
-        if 'template_url' in data:
+        # Get template - accept either URL or base64 data
+        if 'template_data' in data:
+            import base64
+            template_bytes = base64.b64decode(data['template_data'])
+            template_file = tempfile.NamedTemporaryFile(delete=False, suffix='.docx')
+            template_file.write(template_bytes)
+            template_file.close()
+            template_path = template_file.name
+        elif 'template_url' in data:
             import requests
             response = requests.get(data['template_url'])
             response.raise_for_status()
@@ -56,7 +63,7 @@ def process_guide():
             template_file.close()
             template_path = template_file.name
         else:
-            return jsonify({"error": "No template_url provided"}), 400
+            return jsonify({"error": "No template_url or template_data provided"}), 400
         
         # Load document
         doc = Document(template_path)
