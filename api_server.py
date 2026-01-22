@@ -68,6 +68,16 @@ def process_guide():
         # Load document
         doc = Document(template_path)
         
+        # Remove any standalone "Human Design Guide" paragraphs (artifacts from processing)
+        paragraphs_to_remove = []
+        for i, paragraph in enumerate(doc.paragraphs):
+            if paragraph.text.strip() == "Human Design Guide":
+                paragraphs_to_remove.append(paragraph)
+        
+        for para in paragraphs_to_remove:
+            p = para._element
+            p.getparent().remove(p)
+        
         # Replace placeholders
         replacements = data.get('replacements', {})
         for paragraph in doc.paragraphs:
